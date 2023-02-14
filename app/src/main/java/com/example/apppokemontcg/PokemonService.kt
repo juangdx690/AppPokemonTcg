@@ -12,4 +12,10 @@ interface PokemonService {
         @Query("page") page: Int
     ): Call<PokemonResponse>
 
+    @GET("cards")
+    fun getCarta(
+        @Query("c099e29e-2bde-4974-a532-cb7e2cf90072") apiKey: String,
+        @Query("name") nombre: String
+    ): Call<PokemonResponse>
+
 }

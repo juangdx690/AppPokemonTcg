@@ -1,7 +1,9 @@
 package com.example.myapplication
 
+
 import PokemonCardAdapter
 import android.content.Context
+import android.nfc.tech.MifareUltralight.PAGE_SIZE
 import android.os.Bundle
 import android.view.View
 import android.widget.*
@@ -13,6 +15,9 @@ import com.example.apppokemontcg.PokemonResponse
 import com.example.apppokemontcg.PokemonService
 import com.example.apppokemontcg.R
 import com.example.apppokemontcg.databinding.MainActivityBinding
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
@@ -41,6 +46,10 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var spinner: Spinner
 
+    private var isLoading = false
+    private var isLastPage = false
+
+    private lateinit var layoutManager: LinearLayoutManager
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -56,19 +65,10 @@ class MainActivity : AppCompatActivity() {
 
         searchView = binding.searchview
 
-        miAdapter = PokemonCardAdapter(lista)
+        miAdapter = PokemonCardAdapter(allCards)
 
-        searchView.setOnQueryTextListener(object :
-            androidx.appcompat.widget.SearchView.OnQueryTextListener {
-            override fun onQueryTextSubmit(query: String?): Boolean {
-                return false
-            }
 
-            override fun onQueryTextChange(newText: String?): Boolean {
-                buscarPokemon(newText)
-                return true
-            }
-        })
+        layoutManager = LinearLayoutManager(applicationContext)
 
         val retrofit = Retrofit.Builder()
             .baseUrl("https://api.pokemontcg.io/v1/")
@@ -76,10 +76,9 @@ class MainActivity : AppCompatActivity() {
             .build()
 
         val pokemonService = retrofit.create(PokemonService::class.java)
-
         binding.tvNo.visibility = View.VISIBLE
 // Se crea un Listener para la respuesta de la llamada a la API
-        pokemonService.getCards("c099e29e-2bde-4974-a532-cb7e2cf90072", 1)
+        pokemonService.getCards("c099e29e-2bde-4974-a532-cb7e2cf90072", totalPages)
             .enqueue(object : Callback<PokemonResponse> {
                 // Se define la acción a realizar en caso de éxito en la llamada
                 override fun onResponse(
@@ -89,13 +88,10 @@ class MainActivity : AppCompatActivity() {
                     val pokemons = response.body()?.cards
                     allCards.addAll(pokemons!!)
 
-
-
-
                     if (response.isSuccessful) {
                         binding.tvNo.visibility = View.INVISIBLE
                         miAdapter.setList(allCards)
-                        val layoutManager = LinearLayoutManager(applicationContext)
+
                         binding.rvMain.layoutManager = layoutManager
                         binding.rvMain.adapter = miAdapter
 
@@ -113,62 +109,160 @@ class MainActivity : AppCompatActivity() {
 
         spinnerListener()
         // Se define la acción a realizar en caso de fallo en la llamada
+        searchView.setOnQueryTextListener(object :
+            androidx.appcompat.widget.SearchView.OnQueryTextListener {
+            override fun onQueryTextSubmit(query: String?): Boolean {
+                return false
+            }
+
+            override fun onQueryTextChange(newText: String?): Boolean {
+                pokemonService.getCarta("c099e29e-2bde-4974-a532-cb7e2cf90072", newText!!)
+                    .enqueue(object : Callback<PokemonResponse> {
+                        override fun onResponse(
+                            call: Call<PokemonResponse>,
+                            response: Response<PokemonResponse>
+                        ) {
+                            if (response.isSuccessful) {
+                                val result = response.body()!!.cards
+                                miAdapter.setList(result as MutableList<PokemonCard>)
+                            }
+                        }
+
+                        override fun onFailure(call: Call<PokemonResponse>, t: Throwable) {
+                            Toast.makeText(
+                                applicationContext,
+                                "No se pudo realizar la búsqueda",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    })
+                return true
+            }
+        })
+
+        setUpScrollListener()
+
+    }
+
+    private fun setUpScrollListener() {
+
+        binding.rvMain.setOnScrollChangeListener { _, _, _, _, _ ->
+            val totalItemCount = binding.rvMain.computeVerticalScrollRange()
+            val visibleItemCount = binding.rvMain.computeVerticalScrollExtent()
+            val pastVisibleItems = binding.rvMain.computeVerticalScrollOffset()
+
+            if (pastVisibleItems + visibleItemCount >= totalItemCount * 0.60) {
+                addNextN()
+            }
+        }
 
 
     }
 
-     fun spinnerListener(){
+    fun addNextN() {
 
-         spinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-             override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
-                 binding.rvMain.visibility = View.INVISIBLE
-                 binding.tvNo.visibility = View.VISIBLE
-                 binding.tvNo.text = "Cargando ..."
-                 val retrofit = Retrofit.Builder()
-                     .baseUrl("https://api.pokemontcg.io/v1/")
-                     .addConverterFactory(GsonConverterFactory.create())
-                     .build()
-
-                 val pokemonService = retrofit.create(PokemonService::class.java)
-                 val selectedItem = spinner.getItemAtPosition(position) as Int
-                 pokemonService.getCards("c099e29e-2bde-4974-a532-cb7e2cf90072", selectedItem)
-                     .enqueue(object : Callback<PokemonResponse> {
-                         override fun onResponse(
-                             call: Call<PokemonResponse>,
-                             response: Response<PokemonResponse>
-                         ) {
-                             allCards.clear()
-                             miAdapter.setList(allCards)
-                             val layoutManager = LinearLayoutManager(applicationContext)
-                             binding.rvMain.layoutManager = layoutManager
-                             binding.rvMain.adapter = miAdapter
-                             val pokemons = response.body()?.cards
-                             allCards.addAll(pokemons!!)
-
-                             if (response.isSuccessful) {
-                                 binding.rvMain.visibility = View.VISIBLE
-                                 binding.tvNo.visibility = View.INVISIBLE
-                                 miAdapter.setList(allCards)
-                                 val layoutManager = LinearLayoutManager(applicationContext)
-                                 binding.rvMain.layoutManager = layoutManager
-                                 binding.rvMain.adapter = miAdapter
-                             }
-                         }
-
-                         override fun onFailure(call: Call<PokemonResponse>, t: Throwable) {
-                             binding.tvNo.visibility = View.VISIBLE
-                             binding.tvNo.text = "No hay pokemon"
-                         }
-                     })
-             }
-
-             override fun onNothingSelected(parent: AdapterView<*>?) {
-                 // no se realiza ninguna acción
-             }
-         }
+        if (pageNumber < 137) {
 
 
-     }
+            CoroutineScope(Dispatchers.IO).launch {
+
+                val retrofit = Retrofit.Builder()
+                    .baseUrl("https://api.pokemontcg.io/v1/")
+                    .addConverterFactory(GsonConverterFactory.create())
+                    .build()
+
+                val call = retrofit.create(PokemonService::class.java)
+                    .getCards("c099e29e-2bde-4974-a532-cb7e2cf90072", ++totalPages)
+                    .enqueue(object : Callback<PokemonResponse> {
+                        override fun onResponse(
+                            call: Call<PokemonResponse>,
+                            response: Response<PokemonResponse>
+                        ) {
+                            runOnUiThread {
+
+                                if (call.isExecuted) {
+                                    val pokemon = response.body()?.cards
+                                    allCards.addAll(pokemon!!)
+                                    miAdapter.notifyDataSetChanged()
+                                }else{
+                                    println("error")
+                                }
+
+                            }
+                        }
+
+                        override fun onFailure(call: Call<PokemonResponse>, t: Throwable) {
+                            println("error")
+                        }
+
+                    })
+
+
+
+            }
+
+        }
+
+    }
+
+
+    fun spinnerListener() {
+
+        spinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(
+                parent: AdapterView<*>?,
+                view: View?,
+                position: Int,
+                id: Long
+            ) {
+                binding.rvMain.visibility = View.INVISIBLE
+                binding.tvNo.visibility = View.VISIBLE
+                binding.tvNo.text = "Cargando ..."
+                val retrofit = Retrofit.Builder()
+                    .baseUrl("https://api.pokemontcg.io/v1/")
+                    .addConverterFactory(GsonConverterFactory.create())
+                    .build()
+
+                val pokemonService = retrofit.create(PokemonService::class.java)
+                val selectedItem = spinner.getItemAtPosition(position) as Int
+                pokemonService.getCards("c099e29e-2bde-4974-a532-cb7e2cf90072", selectedItem)
+                    .enqueue(object : Callback<PokemonResponse> {
+                        override fun onResponse(
+                            call: Call<PokemonResponse>,
+                            response: Response<PokemonResponse>
+                        ) {
+                            allCards.clear()
+                            miAdapter.setList(allCards)
+                            val layoutManager = LinearLayoutManager(applicationContext)
+                            binding.rvMain.layoutManager = layoutManager
+                            binding.rvMain.adapter = miAdapter
+                            val pokemons = response.body()?.cards
+                            allCards.addAll(pokemons!!)
+
+                            if (response.isSuccessful) {
+                                binding.rvMain.visibility = View.VISIBLE
+                                binding.tvNo.visibility = View.INVISIBLE
+                                miAdapter.setList(allCards)
+                                val layoutManager = LinearLayoutManager(applicationContext)
+                                binding.rvMain.layoutManager = layoutManager
+                                binding.rvMain.adapter = miAdapter
+                            }
+                        }
+
+                        override fun onFailure(call: Call<PokemonResponse>, t: Throwable) {
+                            binding.tvNo.visibility = View.VISIBLE
+                            binding.tvNo.text = "No hay pokemon"
+                        }
+                    })
+            }
+
+            override fun onNothingSelected(parent: AdapterView<*>?) {
+                // no se realiza ninguna acción
+            }
+        }
+
+
+    }
 
     private fun cargarSpinner() {
 

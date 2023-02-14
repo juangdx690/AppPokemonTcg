@@ -29,6 +29,9 @@ class PokemonCardAdapter(private var cards: List<PokemonCard>) : RecyclerView.Ad
 
     }
 
+
+
+
     fun setList(lista2:MutableList<PokemonCard>){
         this.cards = lista2
         notifyDataSetChanged()
@@ -41,6 +44,8 @@ class PokemonCardAdapter(private var cards: List<PokemonCard>) : RecyclerView.Ad
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         holder.bind(cards[position])
+
+
     }
 
     override fun getItemCount() = cards.size
