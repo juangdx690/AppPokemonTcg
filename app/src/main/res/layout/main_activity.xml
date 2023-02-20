@@ -18,7 +18,7 @@
         <androidx.appcompat.widget.SearchView
             android:id="@+id/searchview"
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
+            android:layout_height="wrap_content"
             android:layout_margin="8dp"
             android:layout_weight="0.60"
             android:background="@drawable/searchview_bg"
@@ -27,13 +27,32 @@
     </LinearLayout>
 
 
-    <Spinner
-        android:id="@+id/numPag"
-        android:layout_width="95dp"
+
+<LinearLayout
+    android:id="@+id/numPag"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    app:layout_constraintEnd_toEndOf="parent"
+    app:layout_constraintStart_toStartOf="parent"
+    app:layout_constraintTop_toBottomOf="@+id/contenedorArriba">
+
+
+    <Button
+        android:id="@+id/btnPOST"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/contenedorArriba" />
+        android:text="POST"
+        android:layout_weight="1"/>
+
+    <Button
+        android:id="@+id/btnDELETE"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="DELETE"
+        android:layout_weight="1"/>
+
+</LinearLayout>
+
 
 
     <TextView

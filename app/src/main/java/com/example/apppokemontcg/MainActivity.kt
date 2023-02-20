@@ -2,21 +2,24 @@ package com.example.myapplication
 
 
 import PokemonCardAdapter
+import android.app.Activity
 import android.content.Context
 import android.nfc.tech.MifareUltralight.PAGE_SIZE
 import android.os.Bundle
+import android.text.InputType
+import android.util.Log
 import android.view.View
 import android.widget.*
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.example.apppokemontcg.PokemonCard
-import com.example.apppokemontcg.PokemonResponse
-import com.example.apppokemontcg.PokemonService
-import com.example.apppokemontcg.R
+import com.example.apppokemontcg.*
 import com.example.apppokemontcg.databinding.MainActivityBinding
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import retrofit2.Call
 import retrofit2.Callback
@@ -49,16 +52,22 @@ class MainActivity : AppCompatActivity() {
     private var isLoading = false
     private var isLastPage = false
 
+    private lateinit var btnPOST: Button
+    private lateinit var btnDELETE: Button
+
     private lateinit var layoutManager: LinearLayoutManager
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         binding = MainActivityBinding.inflate(layoutInflater)
         setContentView(binding.root)
-        spinner = binding.numPag
+
         binding.tvNo.text = "Cargando ..."
 
-        cargarSpinner()
+
+
+        btnPOST = binding.btnPOST
+        btnDELETE = binding.btnDELETE
 
         rvMain = findViewById(R.id.rvMain)
         totalPages = 1
@@ -107,7 +116,6 @@ class MainActivity : AppCompatActivity() {
             })
 
 
-        spinnerListener()
         // Se define la acción a realizar en caso de fallo en la llamada
         searchView.setOnQueryTextListener(object :
             androidx.appcompat.widget.SearchView.OnQueryTextListener {
@@ -141,7 +149,98 @@ class MainActivity : AppCompatActivity() {
         })
 
         setUpScrollListener()
+        listenersBotones()
 
+    }
+
+
+    fun listenersBotones() {
+
+        btnPOST.setOnClickListener {
+
+            CoroutineScope(Dispatchers.IO).launch {
+
+                val retrofit = Retrofit.Builder()
+                    .baseUrl("http://10.10.30.84:8080/api/")
+                    .addConverterFactory(GsonConverterFactory.create())
+                    .build()
+
+                val myApi = retrofit.create(SamirService::class.java)
+
+                val myData = SamirClass(
+                    "Galindillo", 20, "samir feo", 10, 5, "el ejido",
+                    "institutos", "2022-01-27", 4, 3, 40
+                )
+
+                myApi.postMyData(myData).enqueue(object : Callback<SamirClass> {
+
+                    override fun onFailure(call: Call<SamirClass>, t: Throwable) {
+                        TODO("Not yet implemented")
+                    }
+
+                    override fun onResponse(
+                        call: Call<SamirClass>,
+                        response: Response<SamirClass>
+                    ) {
+                        if (response.isSuccessful) {
+                            val myResponse = response.body()
+                            Log.i("POST", "realizado con id: " + myResponse?.idInmueble.toString())
+                        } else {
+                            System.err.println(response.errorBody()?.string())
+                        }
+                    }
+
+
+                })
+
+            }
+
+
+        }
+
+        btnDELETE.setOnClickListener {
+
+            val builder = AlertDialog.Builder(this)
+            builder.setTitle("Ingresa un número")
+
+// Configura el cuadro de texto de entrada
+            val input = EditText(this)
+            input.inputType = InputType.TYPE_CLASS_NUMBER
+            builder.setView(input)
+
+// Agrega el botón "Aceptar"
+            builder.setPositiveButton("Aceptar") { dialog, which ->
+                val number = input.text.toString().toInt()
+
+
+                val retrofit = Retrofit.Builder()
+                    .baseUrl("http://10.10.30.84:8080/api/inmuebles/")
+                    .addConverterFactory(GsonConverterFactory.create())
+                    .build()
+
+                val myApi = retrofit.create(SamirService::class.java)
+
+                myApi.deleteInmueble(input.text.toString()).enqueue(object : Callback<Void> {
+                    override fun onResponse(call: Call<Void>, response: Response<Void>) {
+                        Log.i("delete", "delete completado")
+                    }
+
+                    override fun onFailure(call: Call<Void>, t: Throwable) {
+                        Log.i("delete", "delete error")
+                    }
+
+                })
+
+            }
+
+            builder.setNegativeButton("Cancelar") { dialog, which ->
+                dialog.cancel()
+            }
+
+            builder.show()
+
+
+        }
     }
 
     private fun setUpScrollListener() {
@@ -184,7 +283,7 @@ class MainActivity : AppCompatActivity() {
                                     val pokemon = response.body()?.cards
                                     allCards.addAll(pokemon!!)
                                     miAdapter.notifyDataSetChanged()
-                                }else{
+                                } else {
                                     println("error")
                                 }
 
@@ -196,7 +295,6 @@ class MainActivity : AppCompatActivity() {
                         }
 
                     })
-
 
 
             }
