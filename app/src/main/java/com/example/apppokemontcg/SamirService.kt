@@ -17,5 +17,9 @@ interface SamirService {
     @DELETE
     fun deleteInmueble(@Url url:String): Call<Void>
 
+    @POST
+    fun putInmueble(@Url url:String, @Body samirClass: SamirClass): Call<SamirClass>
+
+
 }
 

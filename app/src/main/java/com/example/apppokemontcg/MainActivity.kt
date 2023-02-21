@@ -26,6 +26,7 @@ import retrofit2.Callback
 import retrofit2.Response
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import retrofit2.http.PUT
 
 class MainActivity : AppCompatActivity() {
     private lateinit var rvMain: RecyclerView
@@ -54,6 +55,7 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var btnPOST: Button
     private lateinit var btnDELETE: Button
+    private lateinit var btnPUT: Button
 
     private lateinit var layoutManager: LinearLayoutManager
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -68,6 +70,7 @@ class MainActivity : AppCompatActivity() {
 
         btnPOST = binding.btnPOST
         btnDELETE = binding.btnDELETE
+        btnPUT = binding.btnPUT
 
         rvMain = findViewById(R.id.rvMain)
         totalPages = 1
@@ -161,7 +164,7 @@ class MainActivity : AppCompatActivity() {
             CoroutineScope(Dispatchers.IO).launch {
 
                 val retrofit = Retrofit.Builder()
-                    .baseUrl("http://10.10.30.84:8080/api/")
+                    .baseUrl("http://192.168.147.2:8080/api/")
                     .addConverterFactory(GsonConverterFactory.create())
                     .build()
 
@@ -175,7 +178,7 @@ class MainActivity : AppCompatActivity() {
                 myApi.postMyData(myData).enqueue(object : Callback<SamirClass> {
 
                     override fun onFailure(call: Call<SamirClass>, t: Throwable) {
-                        TODO("Not yet implemented")
+
                     }
 
                     override fun onResponse(
@@ -214,7 +217,7 @@ class MainActivity : AppCompatActivity() {
 
 
                 val retrofit = Retrofit.Builder()
-                    .baseUrl("http://10.10.30.84:8080/api/inmuebles/")
+                    .baseUrl("http://192.168.147.2:8080/api/inmuebles/")
                     .addConverterFactory(GsonConverterFactory.create())
                     .build()
 
@@ -229,6 +232,53 @@ class MainActivity : AppCompatActivity() {
                         Log.i("delete", "delete error")
                     }
 
+                })
+
+            }
+
+            builder.setNegativeButton("Cancelar") { dialog, which ->
+                dialog.cancel()
+            }
+
+            builder.show()
+
+
+        }
+
+        btnPUT.setOnClickListener {
+
+            val builder = AlertDialog.Builder(this)
+            builder.setTitle("Ingresa un número")
+
+// Configura el cuadro de texto de entrada
+            val input = EditText(this)
+            input.inputType = InputType.TYPE_CLASS_NUMBER
+            builder.setView(input)
+
+// Agrega el botón "Aceptar"
+            builder.setPositiveButton("Aceptar") { dialog, which ->
+                val number = input.text.toString().toInt()
+
+
+                val retrofit = Retrofit.Builder()
+                    .baseUrl("http://192.168.147.2:8080/api/inmuebles/")
+                    .addConverterFactory(GsonConverterFactory.create())
+                    .build()
+
+                val myApi = retrofit.create(SamirService::class.java)
+                val myData = SamirClass(
+                    "Galindillo", 20, "samir guapo", 10, 5, "el ejido",
+                    "institutos", "2022-01-27", 4, 3, 40
+                )
+                var ruta= ""+number
+                myApi.putInmueble(ruta, myData).enqueue(object : Callback<SamirClass> {
+                    override fun onResponse(call: Call<SamirClass>, response: Response<SamirClass>) {
+                       Log.i("usuario", "usuario añadido")
+                    }
+
+                    override fun onFailure(call: Call<SamirClass>, t: Throwable) {
+                        Log.i("usuario", "usuario añadido")
+                    }
                 })
 
             }
